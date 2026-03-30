@@ -103,32 +103,27 @@ export class SoundPlayer {
       { cmd: 'mpg123',  buildArgs: (f, v) => ['-f', String(Math.round(v * 32768)), f] },
     ];
 
-    this.detectAndPlay(candidates, 0, filePath, volume);
+    this.detectAndPlay(candidates, filePath, volume);
   }
 
   private detectAndPlay(
     candidates: Array<{ cmd: string; buildArgs: (file: string, vol: number) => string[] }>,
-    index: number,
     filePath: string,
     volume: number,
   ): void {
-    if (index >= candidates.length) {
-      this.log('No audio player found (tried paplay, ffplay, aplay, mpg123)');
-      return;
-    }
-
-    const candidate = candidates[index];
-    const args = candidate.buildArgs(filePath, volume);
-    this.log(`Trying player: ${candidate.cmd}`);
-
-    execFile(candidate.cmd, args, (err) => {
-      if (err) {
-        this.log(`${candidate.cmd} failed, trying next...`);
-        this.detectAndPlay(candidates, index + 1, filePath, volume);
-      } else {
-        this.log(`Detected working player: ${candidate.cmd}`);
-        this.detectedPlayer = candidate;
+    for (const candidate of candidates) {
+      try {
+        const result = require('child_process').execFileSync('which', [candidate.cmd], { stdio: 'pipe' });
+        if (result) {
+          this.log(`Detected audio player: ${candidate.cmd}`);
+          this.detectedPlayer = candidate;
+          this.spawnDetached(candidate.cmd, candidate.buildArgs(filePath, volume));
+          return;
+        }
+      } catch {
+        this.log(`${candidate.cmd} not available`);
       }
-    });
+    }
+    this.log('No audio player found (tried paplay, ffplay, aplay, mpg123). Install one: apt install pulseaudio-utils');
   }
 }

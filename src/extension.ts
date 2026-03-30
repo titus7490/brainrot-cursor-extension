@@ -45,6 +45,8 @@ let outputChannel: vscode.OutputChannel;
 let extensionPath: string;
 let typingGamePanel: vscode.WebviewPanel | undefined;
 let cookieClickerPanel: vscode.WebviewPanel | undefined;
+let snoozeUntil: number = 0;
+let snoozeTimer: ReturnType<typeof setTimeout> | undefined;
 
 function log(msg: string): void {
   const ts = new Date().toLocaleTimeString();
@@ -97,19 +99,74 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
 
-    vscode.commands.registerCommand('brainrot.openGames', async () => {
-      const pick = await vscode.window.showQuickPick(
-        [
-          { label: '$(keyboard) Typing Game', description: 'Learn 10-finger typing with fun!', id: 'typing' },
-          { label: '$(heart) Cookie Clicker', description: 'Click cookies, buy upgrades, waste time!', id: 'cookie' },
-        ],
-        { placeHolder: 'Pick a Brainrot Game 🎮' }
-      );
-      if (pick?.id === 'typing') {
-        vscode.commands.executeCommand('brainrot.typingGame');
-      } else if (pick?.id === 'cookie') {
-        vscode.commands.executeCommand('brainrot.cookieClicker');
+    vscode.commands.registerCommand('brainrot.snooze', async () => {
+      const picks = [
+        { label: '$(clock) 15 minutes', minutes: 15 },
+        { label: '$(clock) 30 minutes', minutes: 30 },
+        { label: '$(clock) 1 hour', minutes: 60 },
+        { label: '$(clock) 2 hours', minutes: 120 },
+        { label: '$(clock) Until restart', minutes: -1 },
+        { label: '$(check) Cancel snooze', minutes: 0 },
+      ];
+
+      const pick = await vscode.window.showQuickPick(picks, {
+        placeHolder: isSnoozed() ? `Snoozed — pick a new duration or cancel` : 'Snooze Brainrot for...',
+      });
+      if (!pick) { return; }
+
+      if (snoozeTimer) { clearTimeout(snoozeTimer); snoozeTimer = undefined; }
+
+      if (pick.minutes === 0) {
+        snoozeUntil = 0;
+        vscode.window.showInformationMessage('Brainrot snooze cancelled — sounds are back!');
+      } else if (pick.minutes === -1) {
+        snoozeUntil = Infinity;
+        vscode.window.showInformationMessage('Brainrot snoozed until restart.');
+      } else {
+        snoozeUntil = Date.now() + pick.minutes * 60_000;
+        snoozeTimer = setTimeout(() => {
+          snoozeUntil = 0;
+          snoozeTimer = undefined;
+          updateStatusBar();
+          vscode.window.showInformationMessage('Brainrot snooze ended — sounds are back!');
+        }, pick.minutes * 60_000);
+        vscode.window.showInformationMessage(`Brainrot snoozed for ${pick.label.replace(/\$\(clock\) /, '')}.`);
       }
+      log(`Snooze set: ${pick.minutes} minutes`);
+      updateStatusBar();
+    }),
+
+    vscode.commands.registerCommand('brainrot.menu', async () => {
+      const snoozed = isSnoozed();
+      const enabled = vscode.workspace.getConfiguration('brainrot').get<boolean>('enabled', true);
+      const items = [
+        { label: '$(megaphone) Test Sound', id: 'testSound' },
+        { label: '$(file-media) Test Image', id: 'testImage' },
+        { label: '', id: '', kind: vscode.QuickPickItemKind.Separator } as any,
+        { label: snoozed ? '$(bell-slash) Cancel Snooze' : '$(bell-slash) Snooze...', id: 'snooze', description: snoozed ? getSnoozeRemaining() : '' },
+        { label: enabled ? '$(close) Disable globally' : '$(check) Enable globally', id: 'toggle' },
+        { label: '', id: '', kind: vscode.QuickPickItemKind.Separator } as any,
+        { label: '$(keyboard) Typing Game', id: 'typing' },
+        { label: '$(heart) Cookie Clicker', id: 'cookie' },
+      ];
+
+      const pick = await vscode.window.showQuickPick(items, { placeHolder: 'Brainrot Menu' });
+      if (!pick) { return; }
+      switch (pick.id) {
+        case 'testSound': vscode.commands.executeCommand('brainrot.testSound'); break;
+        case 'testImage': vscode.commands.executeCommand('brainrot.testImage'); break;
+        case 'snooze': vscode.commands.executeCommand('brainrot.snooze'); break;
+        case 'toggle':
+          if (enabled) { vscode.commands.executeCommand('brainrot.disable'); }
+          else { vscode.commands.executeCommand('brainrot.enable'); }
+          break;
+        case 'typing': vscode.commands.executeCommand('brainrot.typingGame'); break;
+        case 'cookie': vscode.commands.executeCommand('brainrot.cookieClicker'); break;
+      }
+    }),
+
+    vscode.commands.registerCommand('brainrot.openGames', async () => {
+      vscode.commands.executeCommand('brainrot.menu');
     }),
 
     vscode.commands.registerCommand('brainrot.typingGame', () => {
@@ -132,14 +189,14 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBarItem.command = 'brainrot.testSound';
+  statusBarItem.command = 'brainrot.menu';
   context.subscriptions.push(statusBarItem);
   updateStatusBar();
 
   gamesStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
   gamesStatusBarItem.text = '$(sparkle) Brainrot';
-  gamesStatusBarItem.tooltip = 'Open Brainrot Games 🎮';
-  gamesStatusBarItem.command = 'brainrot.openGames';
+  gamesStatusBarItem.tooltip = 'Open Brainrot Menu';
+  gamesStatusBarItem.command = 'brainrot.menu';
   gamesStatusBarItem.show();
   context.subscriptions.push(gamesStatusBarItem);
 
@@ -154,11 +211,34 @@ export function activate(context: vscode.ExtensionContext): void {
   log('Extension activated successfully');
 }
 
+function isSnoozed(): boolean {
+  if (snoozeUntil === 0) { return false; }
+  if (snoozeUntil === Infinity) { return true; }
+  if (Date.now() < snoozeUntil) { return true; }
+  snoozeUntil = 0;
+  return false;
+}
+
+function getSnoozeRemaining(): string {
+  if (snoozeUntil === Infinity) { return 'until restart'; }
+  if (snoozeUntil === 0) { return ''; }
+  const remaining = snoozeUntil - Date.now();
+  if (remaining <= 0) { return ''; }
+  const mins = Math.ceil(remaining / 60_000);
+  if (mins >= 60) { return `${Math.floor(mins / 60)}h ${mins % 60}m left`; }
+  return `${mins}m left`;
+}
+
 function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
   const config = vscode.workspace.getConfiguration('brainrot');
 
   if (!config.get<boolean>('enabled', true)) {
     log(`Failure (${kind}) ignored — extension disabled`);
+    return;
+  }
+
+  if (isSnoozed()) {
+    log(`Failure (${kind}) ignored — snoozed (${getSnoozeRemaining()})`);
     return;
   }
 
@@ -307,8 +387,18 @@ function isFailureKindAllowed(kind: FailureKind, config: vscode.WorkspaceConfigu
 
 function updateStatusBar(): void {
   const enabled = vscode.workspace.getConfiguration('brainrot').get<boolean>('enabled', true);
-  statusBarItem.text = enabled ? '$(megaphone) FAAH' : '$(mute) FAAH';
-  statusBarItem.tooltip = enabled ? 'Brainrot is active — click to test sound' : 'Brainrot is muted — click to test sound';
+  const snoozed = isSnoozed();
+
+  if (snoozed) {
+    statusBarItem.text = '$(bell-slash) FAAH';
+    statusBarItem.tooltip = `Brainrot snoozed (${getSnoozeRemaining()}) — click to open menu`;
+  } else if (enabled) {
+    statusBarItem.text = '$(megaphone) FAAH';
+    statusBarItem.tooltip = 'Brainrot is active — click to open menu';
+  } else {
+    statusBarItem.text = '$(mute) FAAH';
+    statusBarItem.tooltip = 'Brainrot is disabled — click to open menu';
+  }
   statusBarItem.show();
 }
 

@@ -147,526 +147,354 @@ function getTypingGameHtml(wordListsJson: string): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+  :root { --accent: #e2b714; --correct: #d1d0c5; --error: #ca4754; --bg: #232831; --bg2: #2c333e; --border: #3a4150; --dim: #646669; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: #0e0e10;
-    color: #efeff1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    padding: 24px;
-    user-select: none;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: #d1d0c5;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 28px 24px; user-select: none;
   }
-  h1 {
-    font-size: 28px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 8px;
-  }
-  .subtitle { color: #adadb8; font-size: 14px; margin-bottom: 20px; }
+
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .header p { color: var(--dim); font-size: 13px; }
 
   .stats-bar {
-    display: flex;
-    gap: 24px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: flex; gap: 20px; margin-bottom: 18px; flex-wrap: wrap; justify-content: center;
   }
-  .stat {
-    background: #18181b;
-    border: 1px solid #2d2d35;
-    border-radius: 12px;
-    padding: 12px 20px;
-    text-align: center;
-    min-width: 100px;
-  }
-  .stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #48dbfb;
-  }
-  .stat-label {
-    font-size: 11px;
-    color: #adadb8;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 4px;
-  }
-  .stat.accuracy .stat-value { color: #1dd1a1; }
-  .stat.streak .stat-value { color: #feca57; }
-  .stat.errors .stat-value { color: #ff6b6b; }
-  .stat.best .stat-value { color: #ff9ff3; }
+  .stat { text-align: center; min-width: 70px; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+  .stat.err .stat-value { color: var(--error); }
 
   .options-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;
   }
   .opt-btn {
-    padding: 8px 20px;
-    border-radius: 20px;
-    border: 1px solid #2d2d35;
-    background: #18181b;
-    color: #adadb8;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.2s;
+    padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--dim); cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: all 0.15s;
   }
-  .opt-btn:hover { border-color: #48dbfb; color: #efeff1; }
-  .opt-btn.active {
-    background: #48dbfb;
-    color: #0e0e10;
-    border-color: #48dbfb;
-  }
-  .opt-btn.lang-btn.active {
-    background: #ff9ff3;
-    border-color: #ff9ff3;
-  }
+  .opt-btn:hover { border-color: var(--accent); color: var(--correct); }
+  .opt-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .opt-spacer { width: 10px; }
 
-  .word-display {
-    background: #18181b;
-    border: 1px solid #2d2d35;
-    border-radius: 16px;
-    padding: 24px 32px;
-    margin-bottom: 24px;
-    min-height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 3px;
-    max-width: 750px;
-    width: 100%;
-    line-height: 1.6;
-  }
-  .word-display .char {
-    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
-    font-size: 26px;
-    letter-spacing: 1px;
-    transition: color 0.1s;
-  }
-  .char.pending { color: #53535f; }
-  .char.current { color: #efeff1; background: #2d2d35; border-radius: 4px; padding: 0 2px; }
-  .char.correct { color: #1dd1a1; }
-  .char.incorrect { color: #ff6b6b; text-decoration: underline; }
-  .char.space-marker { width: 8px; display: inline-block; }
-
-  .input-area {
-    width: 100%;
-    max-width: 750px;
-    margin-bottom: 24px;
-  }
-  #typingInput {
-    width: 100%;
-    padding: 16px 20px;
-    font-size: 20px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
-    background: #18181b;
-    border: 2px solid #2d2d35;
+  .typing-area {
+    background: var(--bg2);
+    border: 2px solid var(--border);
     border-radius: 12px;
-    color: #efeff1;
+    padding: 28px 32px;
+    max-width: 760px; width: 100%;
+    min-height: 120px;
+    margin-bottom: 20px;
+    cursor: text;
+    position: relative;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.15s;
+    line-height: 2;
+    display: flex; flex-wrap: wrap; align-content: flex-start;
   }
-  #typingInput:focus { border-color: #48dbfb; }
-  #typingInput.error { border-color: #ff6b6b; animation: shake 0.3s; }
+  .typing-area.focused { border-color: var(--accent); }
+  .typing-area.has-error { border-color: var(--error); animation: shake 0.25s; }
+  .typing-area .click-hint {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--dim); font-size: 14px; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  }
+  .typing-area:not(.focused) .click-hint { opacity: 1; }
 
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
   }
+
+  .word {
+    display: inline-flex; white-space: nowrap; margin-right: 0.5em;
+  }
+  .char {
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    font-size: 22px; letter-spacing: 0.5px; transition: color 0.08s;
+  }
+  .char.pending { color: var(--dim); }
+  .char.current { color: #fff; background: #4a5568; border-radius: 3px; padding: 0 1px; }
+  .char.correct { color: var(--correct); }
+  .char.incorrect { color: var(--error); text-decoration: underline; }
 
   .keyboard {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 24px;
-    opacity: 0.9;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 5px; margin-bottom: 20px; opacity: 0.7;
   }
-  .kb-row { display: flex; gap: 5px; }
+  .kb-row { display: flex; gap: 4px; }
   .key {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: 12px; font-weight: 600;
     font-family: 'Cascadia Code', monospace;
-    border: 1px solid #2d2d35;
-    transition: all 0.15s;
+    border: 1px solid var(--border); color: var(--dim); background: var(--bg2);
+    transition: all 0.12s;
   }
-  .key.finger-left-pinky { background: #ff6b6b22; color: #ff6b6b; border-color: #ff6b6b44; }
-  .key.finger-left-ring { background: #feca5722; color: #feca57; border-color: #feca5744; }
-  .key.finger-left-middle { background: #1dd1a122; color: #1dd1a1; border-color: #1dd1a144; }
-  .key.finger-left-index { background: #48dbfb22; color: #48dbfb; border-color: #48dbfb44; }
-  .key.finger-right-index { background: #48dbfb22; color: #48dbfb; border-color: #48dbfb44; }
-  .key.finger-right-middle { background: #1dd1a122; color: #1dd1a1; border-color: #1dd1a144; }
-  .key.finger-right-ring { background: #feca5722; color: #feca57; border-color: #feca5744; }
-  .key.finger-right-pinky { background: #ff6b6b22; color: #ff6b6b; border-color: #ff6b6b44; }
-  .key.finger-thumb { background: #ff9ff322; color: #ff9ff3; border-color: #ff9ff344; }
-  .key.highlight {
-    transform: scale(1.15);
-    box-shadow: 0 0 12px currentColor;
-    z-index: 2;
-  }
-  .key.space { width: 200px; }
+  .key.highlight { background: var(--accent); color: var(--bg); border-color: var(--accent); transform: scale(1.1); }
+  .key.space { width: 180px; }
 
-  .controls {
-    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
-  }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   .btn {
-    padding: 10px 24px;
-    border-radius: 10px;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    background: var(--bg2); color: var(--dim);
   }
-  .btn-primary { background: #48dbfb; color: #0e0e10; }
-  .btn-primary:hover { background: #6ee5fd; transform: translateY(-1px); }
-  .btn-secondary { background: #2d2d35; color: #efeff1; }
-  .btn-secondary:hover { background: #3d3d45; }
+  .btn:hover { border-color: var(--accent); color: var(--correct); }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn-primary:hover { background: #c9a312; }
 
   .results-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(14,14,16,0.92);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
+    display: none; position: fixed; inset: 0; background: rgba(35,40,49,0.94);
+    z-index: 100; justify-content: center; align-items: center;
   }
   .results-overlay.visible { display: flex; }
   .results-card {
-    background: #18181b;
-    border: 1px solid #2d2d35;
-    border-radius: 20px;
-    padding: 40px;
-    text-align: center;
-    max-width: 420px;
-    width: 90%;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+    padding: 36px; text-align: center; max-width: 380px; width: 90%;
   }
-  .results-card h2 {
-    font-size: 24px;
-    margin-bottom: 24px;
-    background: linear-gradient(135deg, #48dbfb, #1dd1a1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  .results-card h2 { font-size: 22px; margin-bottom: 20px; color: var(--accent); }
   .result-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #2d2d35;
-    font-size: 15px;
+    display: flex; justify-content: space-between; padding: 8px 0;
+    border-bottom: 1px solid var(--border); font-size: 14px;
   }
   .result-row:last-of-type { border-bottom: none; }
-  .result-label { color: #adadb8; }
-  .result-value { font-weight: 700; }
-  .new-best { color: #ff9ff3 !important; }
+  .result-label { color: var(--dim); }
+  .result-value { font-weight: 700; color: var(--correct); }
+  .new-best { color: var(--accent) !important; }
+
+  input.hidden-input {
+    position: absolute; left: -9999px; opacity: 0; width: 1px; height: 1px;
+  }
 </style>
 </head>
 <body>
-  <h1>⌨️ Typing Trainer</h1>
-  <p class="subtitle">Learn 10-finger typing — type the words as fast and accurate as you can!</p>
+  <div class="header">
+    <h1>⌨️ Typing Trainer</h1>
+    <p>Type the words — click the box to start</p>
+  </div>
 
   <div class="stats-bar">
     <div class="stat"><div class="stat-value" id="wpm">0</div><div class="stat-label">WPM</div></div>
-    <div class="stat accuracy"><div class="stat-value" id="accuracy">100%</div><div class="stat-label">Accuracy</div></div>
-    <div class="stat streak"><div class="stat-value" id="streak">0</div><div class="stat-label">Streak</div></div>
-    <div class="stat errors"><div class="stat-value" id="errorCount">0</div><div class="stat-label">Errors</div></div>
-    <div class="stat"><div class="stat-value" id="wordsLeft">0</div><div class="stat-label">Words Left</div></div>
-    <div class="stat best"><div class="stat-value" id="bestWpm">-</div><div class="stat-label">Best WPM</div></div>
+    <div class="stat"><div class="stat-value" id="accuracy">100%</div><div class="stat-label">Accuracy</div></div>
+    <div class="stat"><div class="stat-value" id="streak">0</div><div class="stat-label">Streak</div></div>
+    <div class="stat err"><div class="stat-value" id="errorCount">0</div><div class="stat-label">Errors</div></div>
+    <div class="stat"><div class="stat-value" id="wordsLeft">0</div><div class="stat-label">Left</div></div>
+    <div class="stat"><div class="stat-value" id="bestWpm">-</div><div class="stat-label">Best</div></div>
   </div>
 
   <div class="options-bar">
-    <button class="opt-btn lang-btn active" data-lang="en">🇬🇧 English</button>
-    <button class="opt-btn lang-btn" data-lang="de">🇩🇪 Deutsch</button>
-    <span style="width:12px"></span>
+    <button class="opt-btn active" data-lang="en">EN</button>
+    <button class="opt-btn" data-lang="de">DE</button>
+    <div class="opt-spacer"></div>
     <button class="opt-btn diff-btn active" data-diff="easy">Easy</button>
     <button class="opt-btn diff-btn" data-diff="medium">Medium</button>
     <button class="opt-btn diff-btn" data-diff="hard">Hard</button>
   </div>
 
-  <div class="word-display" id="wordDisplay"></div>
-
-  <div class="input-area">
-    <input type="text" id="typingInput" placeholder="Start typing here..." autocomplete="off" spellcheck="false" autofocus />
+  <div class="typing-area" id="typingArea" tabindex="0">
+    <div class="click-hint">Click here or press any key to focus</div>
   </div>
+  <input class="hidden-input" id="hiddenInput" autocomplete="off" spellcheck="false" />
 
   <div class="keyboard" id="keyboard"></div>
 
   <div class="controls">
-    <button class="btn btn-primary" id="restartBtn">🔄 New Round</button>
-    <button class="btn btn-secondary" id="wordsToggle">10 Words</button>
+    <button class="btn btn-primary" id="restartBtn">New Round</button>
+    <button class="btn" id="wordsToggle">10 Words</button>
   </div>
 
   <div class="results-overlay" id="resultsOverlay">
     <div class="results-card">
-      <h2 id="resultsTitle">🎉 Round Complete!</h2>
-      <div class="result-row"><span class="result-label">Words per Minute</span><span class="result-value" id="finalWpm">0</span></div>
+      <h2 id="resultsTitle">Round Complete!</h2>
+      <div class="result-row"><span class="result-label">WPM</span><span class="result-value" id="finalWpm">0</span></div>
       <div class="result-row"><span class="result-label">Accuracy</span><span class="result-value" id="finalAccuracy">100%</span></div>
-      <div class="result-row"><span class="result-label">Total Characters</span><span class="result-value" id="finalChars">0</span></div>
+      <div class="result-row"><span class="result-label">Characters</span><span class="result-value" id="finalChars">0</span></div>
       <div class="result-row"><span class="result-label">Errors</span><span class="result-value" id="finalErrors">0</span></div>
       <div class="result-row"><span class="result-label">Time</span><span class="result-value" id="finalTime">0s</span></div>
       <div class="result-row"><span class="result-label">Best Streak</span><span class="result-value" id="finalStreak">0</span></div>
       <br/>
-      <button class="btn btn-primary" id="playAgainBtn">🔄 Play Again</button>
+      <button class="btn btn-primary" id="playAgainBtn">Play Again</button>
     </div>
   </div>
 
 <script>
 const WORDS = ${wordListsJson};
 const FINGER_MAP = {
-  'q':'left-pinky','a':'left-pinky','z':'left-pinky',
-  'w':'left-ring','s':'left-ring','x':'left-ring',
-  'e':'left-middle','d':'left-middle','c':'left-middle',
-  'r':'left-index','f':'left-index','v':'left-index','t':'left-index','g':'left-index','b':'left-index',
-  'y':'right-index','h':'right-index','n':'right-index','u':'right-index','j':'right-index','m':'right-index',
-  'i':'right-middle','k':'right-middle',',':'right-middle',
-  'o':'right-ring','l':'right-ring','.':'right-ring',
-  'p':'right-pinky',';':'right-pinky','/':'right-pinky',
-  ' ':'thumb',
+  'q':'l','a':'l','z':'l','w':'l','s':'l','x':'l',
+  'e':'l','d':'l','c':'l','r':'l','f':'l','v':'l',
+  't':'l','g':'l','b':'l','y':'r','h':'r','n':'r',
+  'u':'r','j':'r','m':'r','i':'r','k':'r',',':'r',
+  'o':'r','l':'r','.':'r','p':'r',';':'r','/':'r',' ':'s',
 };
 
-let language = 'en';
-let difficulty = 'easy';
-let wordCount = 10;
-let words = [];
-let currentText = '';
-let charIndex = 0;
-let startTime = null;
-let totalKeystrokes = 0;
-let errors = 0;
-let streak = 0;
-let maxStreak = 0;
-let wordsCompleted = 0;
-let gameActive = false;
-let bestWpm = 0;
-let liveWpmInterval = null;
+let language='en', difficulty='easy', wordCount=10;
+let words=[], currentText='', charIndex=0, startTime=null;
+let totalKeystrokes=0, errors=0, streak=0, maxStreak=0;
+let wordsCompleted=0, gameActive=false, bestWpm=0, liveInterval=null;
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+const area = document.getElementById('typingArea');
+const inp = document.getElementById('hiddenInput');
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+function pickWords(){
+  const pool=WORDS[language][difficulty], sh=shuffle(pool);
+  if(sh.length>=wordCount) return sh.slice(0,wordCount);
+  const r=[]; while(r.length<wordCount) r.push(...shuffle(pool)); return r.slice(0,wordCount);
 }
 
-function pickWords() {
-  const pool = WORDS[language][difficulty];
-  const shuffled = shuffle(pool);
-  if (shuffled.length >= wordCount) return shuffled.slice(0, wordCount);
-  const result = [];
-  while (result.length < wordCount) {
-    result.push(...shuffle(pool));
+function focusInput(){ inp.focus(); area.classList.add('focused'); }
+area.addEventListener('click', focusInput);
+inp.addEventListener('focus', ()=>area.classList.add('focused'));
+inp.addEventListener('blur', ()=>area.classList.remove('focused'));
+document.addEventListener('keydown',(e)=>{
+  if(document.activeElement!==inp && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length===1){
+    focusInput();
   }
-  return result.slice(0, wordCount);
-}
+});
 
-function renderKeyboard() {
-  const rows = [
-    ['q','w','e','r','t','y','u','i','o','p'],
-    ['a','s','d','f','g','h','j','k','l',';'],
-    ['z','x','c','v','b','n','m',',','.','/'],
-    [' '],
-  ];
-  const kb = document.getElementById('keyboard');
-  kb.innerHTML = '';
-  for (const row of rows) {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'kb-row';
-    for (const key of row) {
-      const keyDiv = document.createElement('div');
-      const finger = FINGER_MAP[key] || '';
-      keyDiv.className = 'key finger-' + finger + (key === ' ' ? ' space' : '');
-      keyDiv.dataset.key = key;
-      keyDiv.textContent = key === ' ' ? 'SPACE' : key.toUpperCase();
-      rowDiv.appendChild(keyDiv);
+function renderKeyboard(){
+  const rows=[['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l',';'],['z','x','c','v','b','n','m',',','.','/'],[ ' ']];
+  const kb=document.getElementById('keyboard'); kb.innerHTML='';
+  for(const row of rows){
+    const rd=document.createElement('div'); rd.className='kb-row';
+    for(const k of row){
+      const kd=document.createElement('div');
+      kd.className='key'+(k===' '?' space':'');
+      kd.dataset.key=k; kd.textContent=k===' '?'SPACE':k.toUpperCase();
+      rd.appendChild(kd);
     }
-    kb.appendChild(rowDiv);
+    kb.appendChild(rd);
   }
 }
 
-function highlightKey(ch) {
-  document.querySelectorAll('.key').forEach(k => k.classList.remove('highlight'));
-  const target = ch.toLowerCase();
-  const el = document.querySelector('.key[data-key="' + CSS.escape(target) + '"]');
-  if (el) el.classList.add('highlight');
+function highlightKey(ch){
+  document.querySelectorAll('.key').forEach(k=>k.classList.remove('highlight'));
+  const el=document.querySelector('.key[data-key="'+CSS.escape(ch.toLowerCase())+'"]');
+  if(el) el.classList.add('highlight');
 }
 
-function renderWord() {
-  const display = document.getElementById('wordDisplay');
-  display.innerHTML = '';
-  for (let i = 0; i < currentText.length; i++) {
-    const span = document.createElement('span');
-    span.className = 'char';
-    if (currentText[i] === ' ') span.classList.add('space-marker');
-    span.textContent = currentText[i] === ' ' ? ' ' : currentText[i];
-    if (i < charIndex) {
-      span.classList.add('correct');
-    } else if (i === charIndex) {
-      span.classList.add('current');
-    } else {
-      span.classList.add('pending');
+function renderWords(){
+  area.innerHTML='<div class="click-hint">Click here or press any key to focus</div>';
+  let pos=0;
+  for(const word of words){
+    const wSpan=document.createElement('span');
+    wSpan.className='word';
+    for(let i=0;i<word.length;i++){
+      const ch=document.createElement('span');
+      ch.className='char';
+      ch.textContent=word[i];
+      const idx=pos+i;
+      if(idx<charIndex) ch.classList.add('correct');
+      else if(idx===charIndex) ch.classList.add('current');
+      else ch.classList.add('pending');
+      wSpan.appendChild(ch);
     }
-    display.appendChild(span);
+    area.appendChild(wSpan);
+    pos+=word.length;
+    if(pos<currentText.length){
+      const sp=document.createElement('span');
+      sp.className='char';
+      sp.textContent=' ';
+      sp.style.width='0.4em'; sp.style.display='inline-block';
+      if(pos<charIndex) sp.classList.add('correct');
+      else if(pos===charIndex) sp.classList.add('current');
+      else sp.classList.add('pending');
+      area.appendChild(sp);
+      pos++;
+    }
   }
-  if (charIndex < currentText.length) {
-    highlightKey(currentText[charIndex]);
-  }
+  if(charIndex<currentText.length) highlightKey(currentText[charIndex]);
 }
 
-function calcWpm() {
-  if (!startTime) return 0;
-  const elapsed = (Date.now() - startTime) / 1000 / 60;
-  return elapsed > 0 ? Math.round((charIndex / 5) / elapsed) : 0;
+function calcWpm(){ if(!startTime)return 0; const m=(Date.now()-startTime)/60000; return m>0?Math.round((charIndex/5)/m):0; }
+function updateStats(){
+  document.getElementById('wpm').textContent=calcWpm();
+  const acc=totalKeystrokes>0?Math.round(((totalKeystrokes-errors)/totalKeystrokes)*100):100;
+  document.getElementById('accuracy').textContent=acc+'%';
+  document.getElementById('streak').textContent=streak;
+  document.getElementById('errorCount').textContent=errors;
+  document.getElementById('wordsLeft').textContent=Math.max(0,wordCount-wordsCompleted);
+  document.getElementById('bestWpm').textContent=bestWpm>0?bestWpm:'-';
 }
 
-function updateStats() {
-  const wpm = calcWpm();
-  const acc = totalKeystrokes > 0 ? Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100) : 100;
-
-  document.getElementById('wpm').textContent = wpm;
-  document.getElementById('accuracy').textContent = acc + '%';
-  document.getElementById('streak').textContent = streak;
-  document.getElementById('errorCount').textContent = errors;
-  document.getElementById('wordsLeft').textContent = Math.max(0, wordCount - wordsCompleted);
-  document.getElementById('bestWpm').textContent = bestWpm > 0 ? bestWpm : '-';
-}
-
-function startGame() {
-  words = pickWords();
-  currentText = words.join(' ');
-  charIndex = 0;
-  startTime = null;
-  totalKeystrokes = 0;
-  errors = 0;
-  streak = 0;
-  maxStreak = 0;
-  wordsCompleted = 0;
-  gameActive = true;
-
-  if (liveWpmInterval) clearInterval(liveWpmInterval);
-  liveWpmInterval = setInterval(() => { if (gameActive && startTime) updateStats(); }, 500);
-
-  document.getElementById('typingInput').value = '';
-  document.getElementById('typingInput').disabled = false;
-  document.getElementById('typingInput').focus();
+function startGame(){
+  words=pickWords(); currentText=words.join(' ');
+  charIndex=0; startTime=null; totalKeystrokes=0; errors=0;
+  streak=0; maxStreak=0; wordsCompleted=0; gameActive=true;
+  if(liveInterval) clearInterval(liveInterval);
+  liveInterval=setInterval(()=>{ if(gameActive&&startTime) updateStats(); },500);
+  inp.value=''; inp.disabled=false;
   document.getElementById('resultsOverlay').classList.remove('visible');
-
-  renderWord();
-  updateStats();
+  renderWords(); updateStats(); focusInput();
 }
 
-function showResults() {
-  gameActive = false;
-  if (liveWpmInterval) { clearInterval(liveWpmInterval); liveWpmInterval = null; }
-
-  const elapsed = (Date.now() - startTime) / 1000;
-  const minutes = elapsed / 60;
-  const wpm = minutes > 0 ? Math.round((currentText.length / 5) / minutes) : 0;
-  const acc = totalKeystrokes > 0 ? Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100) : 100;
-
-  const isNewBest = wpm > bestWpm;
-  if (isNewBest) bestWpm = wpm;
-
-  document.getElementById('finalWpm').textContent = wpm + (isNewBest ? ' 🏆 NEW BEST!' : '');
-  document.getElementById('finalWpm').className = 'result-value' + (isNewBest ? ' new-best' : '');
-  document.getElementById('resultsTitle').textContent = isNewBest ? '🏆 New Record!' : '🎉 Round Complete!';
-  document.getElementById('finalAccuracy').textContent = acc + '%';
-  document.getElementById('finalChars').textContent = currentText.length;
-  document.getElementById('finalErrors').textContent = errors;
-  document.getElementById('finalTime').textContent = elapsed.toFixed(1) + 's';
-  document.getElementById('finalStreak').textContent = maxStreak;
+function showResults(){
+  gameActive=false;
+  if(liveInterval){clearInterval(liveInterval);liveInterval=null;}
+  const elapsed=(Date.now()-startTime)/1000, min=elapsed/60;
+  const wpm=min>0?Math.round((currentText.length/5)/min):0;
+  const acc=totalKeystrokes>0?Math.round(((totalKeystrokes-errors)/totalKeystrokes)*100):100;
+  const best=wpm>bestWpm; if(best) bestWpm=wpm;
+  document.getElementById('finalWpm').textContent=wpm+(best?' NEW BEST!':'');
+  document.getElementById('finalWpm').className='result-value'+(best?' new-best':'');
+  document.getElementById('resultsTitle').textContent=best?'New Record!':'Round Complete!';
+  document.getElementById('finalAccuracy').textContent=acc+'%';
+  document.getElementById('finalChars').textContent=currentText.length;
+  document.getElementById('finalErrors').textContent=errors;
+  document.getElementById('finalTime').textContent=elapsed.toFixed(1)+'s';
+  document.getElementById('finalStreak').textContent=maxStreak;
   document.getElementById('resultsOverlay').classList.add('visible');
-  document.getElementById('typingInput').disabled = true;
-  document.getElementById('bestWpm').textContent = bestWpm;
+  inp.disabled=true;
+  document.getElementById('bestWpm').textContent=bestWpm;
 }
 
-document.getElementById('typingInput').addEventListener('keydown', (e) => {
-  if (!gameActive) return;
-  if (e.key === 'Tab' || e.key === 'Escape') return;
-  if (e.key === 'Backspace' || e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'CapsLock') return;
-
+inp.addEventListener('keydown',(e)=>{
+  if(!gameActive) return;
+  if(['Tab','Escape','Backspace','Shift','Control','Alt','Meta','CapsLock'].includes(e.key)) return;
   e.preventDefault();
-  if (!startTime) startTime = Date.now();
-
-  if (charIndex >= currentText.length) return;
-
+  if(!startTime) startTime=Date.now();
+  if(charIndex>=currentText.length) return;
   totalKeystrokes++;
-  const expected = currentText[charIndex];
-
-  if (e.key === expected) {
-    charIndex++;
-    streak++;
-    if (streak > maxStreak) maxStreak = streak;
-    if (expected === ' ') wordsCompleted++;
-    document.getElementById('typingInput').classList.remove('error');
+  if(e.key===currentText[charIndex]){
+    charIndex++; streak++;
+    if(streak>maxStreak) maxStreak=streak;
+    if(currentText[charIndex-1]===' ') wordsCompleted++;
+    area.classList.remove('has-error');
   } else {
-    errors++;
-    streak = 0;
-    document.getElementById('typingInput').classList.add('error');
-    setTimeout(() => document.getElementById('typingInput').classList.remove('error'), 300);
+    errors++; streak=0;
+    area.classList.add('has-error');
+    setTimeout(()=>area.classList.remove('has-error'),250);
   }
-
-  const displayedText = currentText.substring(0, charIndex);
-  document.getElementById('typingInput').value = displayedText.split(' ').pop() || '';
-
-  renderWord();
-  updateStats();
-
-  if (charIndex >= currentText.length) {
-    wordsCompleted++;
-    showResults();
-  }
+  renderWords(); updateStats();
+  if(charIndex>=currentText.length){ wordsCompleted++; showResults(); }
 });
 
-document.querySelectorAll('.lang-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    language = btn.dataset.lang;
-    startGame();
+document.querySelectorAll('[data-lang]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('[data-lang]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); language=b.dataset.lang; startGame();
   });
 });
-
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    difficulty = btn.dataset.diff;
-    startGame();
+document.querySelectorAll('.diff-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); difficulty=b.dataset.diff; startGame();
   });
 });
-
-const wordCounts = [10, 15, 25, 50, 100];
-let wordCountIdx = 0;
-document.getElementById('wordsToggle').addEventListener('click', () => {
-  wordCountIdx = (wordCountIdx + 1) % wordCounts.length;
-  wordCount = wordCounts[wordCountIdx];
-  document.getElementById('wordsToggle').textContent = wordCount + ' Words';
-  startGame();
+const wc=[10,15,25,50,100]; let wci=0;
+document.getElementById('wordsToggle').addEventListener('click',()=>{
+  wci=(wci+1)%wc.length; wordCount=wc[wci];
+  document.getElementById('wordsToggle').textContent=wordCount+' Words'; startGame();
 });
-
 document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('playAgainBtn').addEventListener('click', startGame);
 
-renderKeyboard();
-startGame();
+renderKeyboard(); startGame();
 </script>
 </body>
 </html>`;

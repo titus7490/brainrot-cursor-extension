@@ -48,6 +48,14 @@
       {
         "command": "brainrot.cookieClicker",
         "title": "Brainrot: Cookie Clicker"
+      },
+      {
+        "command": "brainrot.snooze",
+        "title": "Brainrot: Snooze (temporarily disable)"
+      },
+      {
+        "command": "brainrot.menu",
+        "title": "Brainrot: Open Menu"
       }
     ],
     "configuration": {
