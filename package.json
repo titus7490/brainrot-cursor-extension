@@ -2,7 +2,7 @@
   "name": "faah-cursor-extension",
   "displayName": "FAAH - Sound on Failure",
   "description": "Plays the iconic FAAH sound whenever your tests, builds, or programs fail in the terminal.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "faah",
   "license": "MIT",
   "engines": {
