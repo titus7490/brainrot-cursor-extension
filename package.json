@@ -1,0 +1,134 @@
+{
+  "name": "faah-cursor-extension",
+  "displayName": "FAAH - Sound on Failure",
+  "description": "Plays the iconic FAAH sound whenever your tests, builds, or programs fail in the terminal.",
+  "version": "0.1.0",
+  "publisher": "faah",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "faah.enable",
+        "title": "FAAH: Enable Sound on Failure"
+      },
+      {
+        "command": "faah.disable",
+        "title": "FAAH: Disable Sound on Failure"
+      },
+      {
+        "command": "faah.testSound",
+        "title": "FAAH: Test the Sound"
+      }
+    ],
+    "configuration": {
+      "title": "FAAH",
+      "properties": {
+        "faah.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch — enable or disable all failure sounds."
+        },
+        "faah.onTestFailure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play sound when a test command fails."
+        },
+        "faah.onBuildFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play sound when a build or compile command fails."
+        },
+        "faah.onRuntimeFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play sound when a runtime command (server, script) crashes."
+        },
+        "faah.onAnyFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Play sound on ANY non-zero exit code. Overrides category-specific settings. Can be noisy!"
+        },
+        "faah.sound": {
+          "type": "string",
+          "default": "faaaah",
+          "enum": [
+            "faaaah",
+            "fatality",
+            "joker",
+            "random"
+          ],
+          "enumDescriptions": [
+            "Classic sad trombone",
+            "Mortal Kombat fatality",
+            "Why so serious?",
+            "Random pick each time"
+          ],
+          "description": "Which built-in sound to play on failure."
+        },
+        "faah.volume": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0.1,
+          "maximum": 1,
+          "description": "Playback volume (0.1 to 1.0)."
+        },
+        "faah.customSoundPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to a custom .wav file. Overrides the built-in sound selection when set."
+        },
+        "faah.extraTestCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional command names to treat as test runs (e.g. 'my-test-runner')."
+        },
+        "faah.extraBuildCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional command names to treat as build/compile runs (e.g. 'my-build-tool')."
+        },
+        "faah.extraRunCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional command names to treat as runtime runs (e.g. 'my-server')."
+        },
+        "faah.showNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification with a random message when a failure is detected."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
