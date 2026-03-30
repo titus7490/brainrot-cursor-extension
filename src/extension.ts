@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import { SoundPlayer } from './soundPlayer';
 import { FailureDetector, FailureKind } from './failureDetector';
 
-const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'];
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']);
 
 const FAILURE_MESSAGES: Record<FailureKind, string[]> = {
   test: [
@@ -81,6 +80,17 @@ export function activate(context: vscode.ExtensionContext): void {
       soundPlayer.play();
       vscode.window.showInformationMessage('FAAH! (test sound)');
     }),
+
+    vscode.commands.registerCommand('faah.testImage', async () => {
+      log('Test image triggered via command');
+      const config = vscode.workspace.getConfiguration('faah');
+      try {
+        await showRandomFailureImage(config);
+      } catch (err) {
+        log(`Test image failed: ${err}`);
+        vscode.window.showErrorMessage(`FAAH image test failed: ${err}`);
+      }
+    }),
   );
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -123,42 +133,75 @@ function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
   }
 
   if (config.get<boolean>('showFailureImage', false)) {
-    showRandomFailureImage(config);
+    showRandomFailureImage(config).catch(err => {
+      log(`Failed to show failure image: ${err}`);
+    });
   }
 }
 
-function showRandomFailureImage(config: vscode.WorkspaceConfiguration): void {
-  const customDir = config.get<string>('failureImagesPath', '');
-  const imagesDir = customDir || path.join(extensionPath, 'failure-images');
+async function showRandomFailureImage(config: vscode.WorkspaceConfiguration): Promise<void> {
+  const candidates = getImageDirCandidates(config);
+  log(`Image dir candidates: ${candidates.map(u => u.toString()).join(', ')}`);
 
-  if (!fs.existsSync(imagesDir)) {
-    log(`Failure images directory not found: ${imagesDir}`);
-    return;
+  for (const dirUri of candidates) {
+    let entries: [string, vscode.FileType][];
+    try {
+      entries = await vscode.workspace.fs.readDirectory(dirUri);
+    } catch {
+      log(`Cannot read dir: ${dirUri.toString()}, trying next...`);
+      continue;
+    }
+
+    const imageFiles = entries
+      .filter(([name, type]) =>
+        type === vscode.FileType.File &&
+        IMAGE_EXTENSIONS.has(path.extname(name).toLowerCase())
+      )
+      .map(([name]) => name);
+
+    if (imageFiles.length === 0) {
+      log(`No images in: ${dirUri.toString()}, trying next...`);
+      continue;
+    }
+
+    const picked = imageFiles[Math.floor(Math.random() * imageFiles.length)];
+    const imageUri = vscode.Uri.joinPath(dirUri, picked);
+    log(`Opening failure image: ${imageUri.toString()}`);
+
+    try {
+      await vscode.commands.executeCommand('vscode.open', imageUri, vscode.ViewColumn.Beside);
+      return;
+    } catch (openErr) {
+      log(`vscode.open failed: ${openErr}`);
+    }
   }
 
-  let files: string[];
-  try {
-    files = fs.readdirSync(imagesDir)
-      .filter(f => IMAGE_EXTENSIONS.includes(path.extname(f).toLowerCase()));
-  } catch (err) {
-    log(`Failed to read failure images directory: ${err}`);
-    return;
+  log('No failure images found in any candidate directory');
+}
+
+function getImageDirCandidates(config: vscode.WorkspaceConfiguration): vscode.Uri[] {
+  const uris: vscode.Uri[] = [];
+  const customDir = config.get<string>('failureImagesPath', '').trim();
+
+  const wsFolder = vscode.workspace.workspaceFolders?.[0];
+
+  if (customDir) {
+    if (wsFolder) {
+      uris.push(vscode.Uri.joinPath(wsFolder.uri, customDir));
+    }
+    if (customDir.startsWith('/')) {
+      uris.push(vscode.Uri.file(customDir));
+    }
+  } else {
+    if (wsFolder) {
+      uris.push(vscode.Uri.joinPath(wsFolder.uri, 'failure-images'));
+    }
   }
 
-  if (files.length === 0) {
-    log(`No images found in: ${imagesDir}`);
-    return;
-  }
+  // Bundled fallback (only works locally)
+  uris.push(vscode.Uri.file(path.join(extensionPath, 'failure-images')));
 
-  const picked = files[Math.floor(Math.random() * files.length)];
-  const imagePath = path.join(imagesDir, picked);
-  log(`Showing failure image: ${imagePath}`);
-
-  const uri = vscode.Uri.file(imagePath);
-  vscode.commands.executeCommand('vscode.open', uri, {
-    viewColumn: vscode.ViewColumn.Beside,
-    preview: true,
-  });
+  return uris;
 }
 
 function isFailureKindAllowed(kind: FailureKind, config: vscode.WorkspaceConfiguration): boolean {

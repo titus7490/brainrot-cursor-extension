@@ -12,6 +12,7 @@
     "Other"
   ],
   "extensionKind": [
+    "workspace",
     "ui"
   ],
   "activationEvents": [
@@ -31,6 +32,10 @@
       {
         "command": "faah.testSound",
         "title": "FAAH: Test the Sound"
+      },
+      {
+        "command": "faah.testImage",
+        "title": "FAAH: Test Failure Image"
       }
     ],
     "configuration": {
@@ -127,7 +132,7 @@
         "faah.failureImagesPath": {
           "type": "string",
           "default": "",
-          "description": "Custom path to a folder of failure images (png, jpg, gif, webp). Leave empty to use the built-in failure-images folder."
+          "description": "Path to a folder of failure images relative to the workspace root (png, jpg, gif, webp). Leave empty to use 'failure-images/' in the workspace root."
         }
       }
     }
