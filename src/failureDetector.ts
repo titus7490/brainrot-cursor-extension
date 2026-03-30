@@ -49,7 +49,6 @@ const RUNTIME_PATTERNS: RegExp[] = [
   /\bphp\s+\S/, /\bphp\s+artisan\b/,
 ];
 
-// Regex patterns to extract exit codes from debug adapter output text
 const EXIT_CODE_OUTPUT_PATTERNS: RegExp[] = [
   /exited?\s*\((\d+)\)/i,
   /exit\s+code[:\s]+(\d+)/i,
@@ -61,9 +60,11 @@ const EXIT_CODE_OUTPUT_PATTERNS: RegExp[] = [
 export class FailureDetector {
   private lastTriggerTime = 0;
   private readonly onFailure: (kind: FailureKind) => void;
+  private readonly log: (msg: string) => void;
 
-  constructor(onFailure: (kind: FailureKind) => void) {
+  constructor(onFailure: (kind: FailureKind) => void, log: (msg: string) => void) {
     this.onFailure = onFailure;
+    this.log = log;
   }
 
   activate(context: vscode.ExtensionContext): void {
@@ -73,16 +74,26 @@ export class FailureDetector {
   }
 
   private registerShellIntegration(context: vscode.ExtensionContext): void {
-    // This API may not exist in all VS Code / Cursor versions
     if (typeof vscode.window.onDidEndTerminalShellExecution !== 'function') {
-      console.log('[FAAH] Shell integration API not available, skipping terminal monitoring');
+      this.log('WARNING: Shell integration API (onDidEndTerminalShellExecution) not available.');
+      this.log('Terminal command monitoring will not work. Task and debug monitoring are still active.');
+      vscode.window.showWarningMessage(
+        'FAAH: Shell integration API not available in this editor version. ' +
+        'Terminal error detection may be limited. Try "FAAH: Test the Sound" to verify audio works.'
+      );
       return;
     }
 
+    this.log('Shell integration API available — registering terminal monitor');
+
     const disposable = vscode.window.onDidEndTerminalShellExecution((e) => {
-      if (e.exitCode !== undefined && e.exitCode !== 0) {
-        const cmd = e.execution.commandLine?.value ?? '';
+      const exitCode = e.exitCode;
+      const cmd = e.execution.commandLine?.value ?? '(unknown)';
+      this.log(`Shell execution ended: cmd="${cmd}", exitCode=${exitCode}`);
+
+      if (exitCode !== undefined && exitCode !== 0) {
         const kind = this.classifyCommand(cmd);
+        this.log(`Non-zero exit (${exitCode}) detected, classified as: ${kind}`);
         this.trigger(kind);
       }
     });
@@ -91,9 +102,15 @@ export class FailureDetector {
   }
 
   private registerTaskMonitor(context: vscode.ExtensionContext): void {
+    this.log('Registering task process monitor');
+
     const disposable = vscode.tasks.onDidEndTaskProcess((e) => {
+      const taskName = e.execution.task.name;
+      this.log(`Task ended: name="${taskName}", exitCode=${e.exitCode}`);
+
       if (e.exitCode !== undefined && e.exitCode !== 0) {
         const kind = this.classifyTask(e.execution.task);
+        this.log(`Task failure detected, classified as: ${kind}`);
         this.trigger(kind);
       }
     });
@@ -102,6 +119,7 @@ export class FailureDetector {
   }
 
   private registerDebugTracker(context: vscode.ExtensionContext): void {
+    this.log('Registering debug adapter tracker');
     const detector = this;
 
     const disposable = vscode.debug.registerDebugAdapterTrackerFactory('*', {
@@ -112,20 +130,20 @@ export class FailureDetector {
               return;
             }
 
-            // Standard DAP "exited" event
             if (message.event === 'exited') {
               const exitCode = message.body?.exitCode as number | undefined;
+              detector.log(`Debug session exited with code: ${exitCode}`);
               if (exitCode !== undefined && exitCode !== 0) {
                 detector.trigger('runtime');
               }
               return;
             }
 
-            // Parse exit codes from debug output text (e.g. Dart: "Exited (255).")
             if (message.event === 'output') {
               const text = (message.body?.output as string) ?? '';
               const code = detector.parseExitCodeFromOutput(text);
               if (code !== null && code !== 0) {
+                detector.log(`Debug output contains exit code: ${code}`);
                 detector.trigger('runtime');
               }
             }
@@ -164,11 +182,9 @@ export class FailureDetector {
   }
 
   private classifyTask(task: vscode.Task): FailureKind {
-    // Use task group as primary signal
     if (task.group === vscode.TaskGroup.Test) { return 'test'; }
     if (task.group === vscode.TaskGroup.Build) { return 'build'; }
 
-    // Fallback: extract command string and classify via regex
     const cmdString = this.extractTaskCommand(task);
     if (cmdString) {
       return this.classifyCommand(cmdString);
@@ -213,6 +229,7 @@ export class FailureDetector {
   private trigger(kind: FailureKind): void {
     const now = Date.now();
     if (now - this.lastTriggerTime < DEBOUNCE_MS) {
+      this.log(`Debounced (${now - this.lastTriggerTime}ms since last trigger)`);
       return;
     }
     this.lastTriggerTime = now;

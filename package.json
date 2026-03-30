@@ -58,7 +58,7 @@
         },
         "faah.onAnyFailure": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Play sound on ANY non-zero exit code. Overrides category-specific settings. Can be noisy!"
         },
         "faah.sound": {
@@ -118,6 +118,16 @@
           "type": "boolean",
           "default": true,
           "description": "Show a notification with a random message when a failure is detected."
+        },
+        "faah.showFailureImage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open a random image from the failure-images folder when an error is detected."
+        },
+        "faah.failureImagesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path to a folder of failure images (png, jpg, gif, webp). Leave empty to use the built-in failure-images folder."
         }
       }
     }

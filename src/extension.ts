@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { SoundPlayer } from './soundPlayer';
 import { FailureDetector, FailureKind } from './failureDetector';
+
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'];
 
 const FAILURE_MESSAGES: Record<FailureKind, string[]> = {
   test: [
@@ -35,13 +39,29 @@ const FAILURE_MESSAGES: Record<FailureKind, string[]> = {
 };
 
 let statusBarItem: vscode.StatusBarItem;
+let outputChannel: vscode.OutputChannel;
+let extensionPath: string;
+
+function log(msg: string): void {
+  const ts = new Date().toLocaleTimeString();
+  outputChannel.appendLine(`[${ts}] ${msg}`);
+}
 
 export function activate(context: vscode.ExtensionContext): void {
-  const soundPlayer = new SoundPlayer(context.extensionPath);
+  outputChannel = vscode.window.createOutputChannel('FAAH');
+  context.subscriptions.push(outputChannel);
+
+  extensionPath = context.extensionPath;
+
+  log('Extension activating...');
+  log(`Extension path: ${extensionPath}`);
+  log(`Platform: ${process.platform}`);
+
+  const soundPlayer = new SoundPlayer(context.extensionPath, log);
 
   const detector = new FailureDetector((kind: FailureKind) => {
     handleFailure(kind, soundPlayer);
-  });
+  }, log);
 
   detector.activate(context);
 
@@ -57,6 +77,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand('faah.testSound', () => {
+      log('Test sound triggered via command');
       soundPlayer.play();
       vscode.window.showInformationMessage('FAAH! (test sound)');
     }),
@@ -74,20 +95,25 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
   );
+
+  log('Extension activated successfully');
 }
 
 function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
   const config = vscode.workspace.getConfiguration('faah');
 
   if (!config.get<boolean>('enabled', true)) {
+    log(`Failure (${kind}) ignored — extension disabled`);
     return;
   }
 
   const allowed = isFailureKindAllowed(kind, config);
   if (!allowed) {
+    log(`Failure (${kind}) ignored — category not enabled`);
     return;
   }
 
+  log(`Failure (${kind}) — playing sound!`);
   soundPlayer.play();
 
   if (config.get<boolean>('showNotification', true)) {
@@ -95,10 +121,48 @@ function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
     const message = messages[Math.floor(Math.random() * messages.length)];
     vscode.window.showWarningMessage(message);
   }
+
+  if (config.get<boolean>('showFailureImage', false)) {
+    showRandomFailureImage(config);
+  }
+}
+
+function showRandomFailureImage(config: vscode.WorkspaceConfiguration): void {
+  const customDir = config.get<string>('failureImagesPath', '');
+  const imagesDir = customDir || path.join(extensionPath, 'failure-images');
+
+  if (!fs.existsSync(imagesDir)) {
+    log(`Failure images directory not found: ${imagesDir}`);
+    return;
+  }
+
+  let files: string[];
+  try {
+    files = fs.readdirSync(imagesDir)
+      .filter(f => IMAGE_EXTENSIONS.includes(path.extname(f).toLowerCase()));
+  } catch (err) {
+    log(`Failed to read failure images directory: ${err}`);
+    return;
+  }
+
+  if (files.length === 0) {
+    log(`No images found in: ${imagesDir}`);
+    return;
+  }
+
+  const picked = files[Math.floor(Math.random() * files.length)];
+  const imagePath = path.join(imagesDir, picked);
+  log(`Showing failure image: ${imagePath}`);
+
+  const uri = vscode.Uri.file(imagePath);
+  vscode.commands.executeCommand('vscode.open', uri, {
+    viewColumn: vscode.ViewColumn.Beside,
+    preview: true,
+  });
 }
 
 function isFailureKindAllowed(kind: FailureKind, config: vscode.WorkspaceConfiguration): boolean {
-  if (config.get<boolean>('onAnyFailure', false)) {
+  if (config.get<boolean>('onAnyFailure', true)) {
     return true;
   }
 

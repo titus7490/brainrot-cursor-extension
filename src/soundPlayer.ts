@@ -9,9 +9,12 @@ type SoundChoice = BuiltInSound | 'random';
 
 export class SoundPlayer {
   private readonly soundsDir: string;
+  private readonly log: (msg: string) => void;
 
-  constructor(extensionPath: string) {
+  constructor(extensionPath: string, log: (msg: string) => void) {
     this.soundsDir = path.join(extensionPath, 'sounds');
+    this.log = log;
+    this.log(`Sounds directory: ${this.soundsDir}`);
   }
 
   async play(): Promise<void> {
@@ -25,10 +28,13 @@ export class SoundPlayer {
       return;
     }
 
+    this.log(`Playing: ${filePath} (volume: ${volume})`);
+
     try {
       await this.playFile(filePath, volume);
+      this.log('Playback finished');
     } catch (err) {
-      console.error('[FAAH] Sound playback failed:', err);
+      this.log(`Playback FAILED: ${err}`);
     }
   }
 
@@ -37,7 +43,7 @@ export class SoundPlayer {
       if (fs.existsSync(customPath)) {
         return customPath;
       }
-      console.warn(`[FAAH] Custom sound not found: ${customPath}`);
+      this.log(`Custom sound not found: ${customPath}`);
       return null;
     }
 
@@ -47,7 +53,7 @@ export class SoundPlayer {
 
     const filePath = path.join(this.soundsDir, `${name}.wav`);
     if (!fs.existsSync(filePath)) {
-      console.warn(`[FAAH] Built-in sound not found: ${filePath}`);
+      this.log(`Built-in sound not found: ${filePath}`);
       return null;
     }
     return filePath;
@@ -73,7 +79,6 @@ export class SoundPlayer {
     resolve: () => void,
     reject: (err: Error) => void
   ): void {
-    // afplay volume: 0 = silent, 1 = normal, 255 = max
     const afplayVolume = Math.max(0, Math.min(volume, 1)).toString();
     execFile('afplay', [filePath, '-v', afplayVolume], (err: Error | null) => {
       err ? reject(err) : resolve();
@@ -118,13 +123,15 @@ export class SoundPlayer {
     reject: (err: Error) => void
   ): void {
     if (index >= players.length) {
-      reject(new Error('[FAAH] No audio player found on this system (tried aplay, paplay, ffplay, mpg123)'));
+      reject(new Error('No audio player found (tried aplay, paplay, ffplay, mpg123)'));
       return;
     }
 
     const { cmd, args } = players[index];
+    this.log(`Trying player: ${cmd}`);
     execFile(cmd, args, (err: Error | null) => {
       if (err) {
+        this.log(`${cmd} failed, trying next...`);
         this.tryPlayers(players, index + 1, resolve, reject);
       } else {
         resolve();
