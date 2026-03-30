@@ -61,7 +61,3 @@ All settings are under the `brainrot.*` prefix in your editor settings.
 | `brainrot.failureImagesPath` | `""` | Custom path to failure images folder |
 
 Put your images (png, jpg, gif, webp) in a `failure-images/` folder in your workspace root, or set a custom path.
-
-## License
-
-MIT — Titus Gaubatz
