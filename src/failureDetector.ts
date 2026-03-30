@@ -78,8 +78,8 @@ export class FailureDetector {
       this.log('WARNING: Shell integration API (onDidEndTerminalShellExecution) not available.');
       this.log('Terminal command monitoring will not work. Task and debug monitoring are still active.');
       vscode.window.showWarningMessage(
-        'FAAH: Shell integration API not available in this editor version. ' +
-        'Terminal error detection may be limited. Try "FAAH: Test the Sound" to verify audio works.'
+        'Brainrot: Shell integration API not available in this editor version. ' +
+        'Terminal error detection may be limited. Try "Brainrot: Test the Sound" to verify audio works.'
       );
       return;
     }
@@ -212,7 +212,7 @@ export class FailureDetector {
   }
 
   private getExtraPatterns(): { test: RegExp[]; build: RegExp[]; runtime: RegExp[] } {
-    const config = vscode.workspace.getConfiguration('faah');
+    const config = vscode.workspace.getConfiguration('brainrot');
 
     const toPatterns = (commands: string[]): RegExp[] =>
       commands

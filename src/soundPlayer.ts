@@ -18,7 +18,7 @@ export class SoundPlayer {
   }
 
   async play(): Promise<void> {
-    const config = vscode.workspace.getConfiguration('faah');
+    const config = vscode.workspace.getConfiguration('brainrot');
     const volume = config.get<number>('volume', 0.7);
     const customPath = config.get<string>('customSoundPath', '');
     const soundChoice = config.get<SoundChoice>('sound', 'faaaah');

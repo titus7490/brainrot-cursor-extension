@@ -1,9 +1,9 @@
 {
-  "name": "faah-cursor-extension",
-  "displayName": "FAAH - Sound on Failure",
-  "description": "Plays the iconic FAAH sound whenever your tests, builds, or programs fail in the terminal.",
+  "name": "brainrot-cursor-extension",
+  "displayName": "Brainrot - Sound & Image on Failure",
+  "description": "Plays a sound and shows a random meme whenever your tests, builds, or programs fail in the terminal.",
   "version": "0.1.1",
-  "publisher": "faah",
+  "publisher": "TitusGaubatz",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -22,51 +22,51 @@
   "contributes": {
     "commands": [
       {
-        "command": "faah.enable",
-        "title": "FAAH: Enable Sound on Failure"
+        "command": "brainrot.enable",
+        "title": "Brainrot: Enable Sound on Failure"
       },
       {
-        "command": "faah.disable",
-        "title": "FAAH: Disable Sound on Failure"
+        "command": "brainrot.disable",
+        "title": "Brainrot: Disable Sound on Failure"
       },
       {
-        "command": "faah.testSound",
-        "title": "FAAH: Test the Sound"
+        "command": "brainrot.testSound",
+        "title": "Brainrot: Test the Sound"
       },
       {
-        "command": "faah.testImage",
-        "title": "FAAH: Test Failure Image"
+        "command": "brainrot.testImage",
+        "title": "Brainrot: Test Failure Image"
       }
     ],
     "configuration": {
-      "title": "FAAH",
+      "title": "Brainrot",
       "properties": {
-        "faah.enabled": {
+        "brainrot.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Master switch — enable or disable all failure sounds."
         },
-        "faah.onTestFailure": {
+        "brainrot.onTestFailure": {
           "type": "boolean",
           "default": true,
           "description": "Play sound when a test command fails."
         },
-        "faah.onBuildFailure": {
+        "brainrot.onBuildFailure": {
           "type": "boolean",
           "default": false,
           "description": "Play sound when a build or compile command fails."
         },
-        "faah.onRuntimeFailure": {
+        "brainrot.onRuntimeFailure": {
           "type": "boolean",
           "default": false,
           "description": "Play sound when a runtime command (server, script) crashes."
         },
-        "faah.onAnyFailure": {
+        "brainrot.onAnyFailure": {
           "type": "boolean",
           "default": true,
           "description": "Play sound on ANY non-zero exit code. Overrides category-specific settings. Can be noisy!"
         },
-        "faah.sound": {
+        "brainrot.sound": {
           "type": "string",
           "default": "faaaah",
           "enum": [
@@ -83,19 +83,19 @@
           ],
           "description": "Which built-in sound to play on failure."
         },
-        "faah.volume": {
+        "brainrot.volume": {
           "type": "number",
           "default": 0.7,
           "minimum": 0.1,
           "maximum": 1,
           "description": "Playback volume (0.1 to 1.0)."
         },
-        "faah.customSoundPath": {
+        "brainrot.customSoundPath": {
           "type": "string",
           "default": "",
           "description": "Absolute path to a custom .wav file. Overrides the built-in sound selection when set."
         },
-        "faah.extraTestCommands": {
+        "brainrot.extraTestCommands": {
           "type": "array",
           "items": {
             "type": "string"
@@ -103,7 +103,7 @@
           "default": [],
           "description": "Additional command names to treat as test runs (e.g. 'my-test-runner')."
         },
-        "faah.extraBuildCommands": {
+        "brainrot.extraBuildCommands": {
           "type": "array",
           "items": {
             "type": "string"
@@ -111,7 +111,7 @@
           "default": [],
           "description": "Additional command names to treat as build/compile runs (e.g. 'my-build-tool')."
         },
-        "faah.extraRunCommands": {
+        "brainrot.extraRunCommands": {
           "type": "array",
           "items": {
             "type": "string"
@@ -119,20 +119,27 @@
           "default": [],
           "description": "Additional command names to treat as runtime runs (e.g. 'my-server')."
         },
-        "faah.showNotification": {
+        "brainrot.showNotification": {
           "type": "boolean",
           "default": true,
           "description": "Show a notification with a random message when a failure is detected."
         },
-        "faah.showFailureImage": {
+        "brainrot.showFailureImage": {
           "type": "boolean",
           "default": false,
           "description": "Open a random image from the failure-images folder when an error is detected."
         },
-        "faah.failureImagesPath": {
+        "brainrot.failureImagesPath": {
           "type": "string",
           "default": "",
           "description": "Path to a folder of failure images relative to the workspace root (png, jpg, gif, webp). Leave empty to use 'failure-images/' in the workspace root."
+        },
+        "brainrot.failureImageDuration": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "How many seconds the failure image stays open before auto-closing (1–60)."
         }
       }
     }

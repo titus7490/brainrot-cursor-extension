@@ -63,9 +63,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
-          name: "FAAH v${{ steps.version.outputs.VERSION }}"
+          name: "Brainrot v${{ steps.version.outputs.VERSION }}"
           body: |
-            ## FAAH - Sound on Failure v${{ steps.version.outputs.VERSION }}
+            ## Brainrot - Sound & Image on Failure v${{ steps.version.outputs.VERSION }}
 
             ### Installation
             1. Download the `.vsix` file below

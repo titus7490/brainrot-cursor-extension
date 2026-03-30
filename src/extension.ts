@@ -7,33 +7,33 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.sv
 
 const FAILURE_MESSAGES: Record<FailureKind, string[]> = {
   test: [
-    'FAAH! Your tests called in sick today.',
-    'FAAH! Looks like someone forgot to test their test.',
-    'FAAH! That test had one job... ONE JOB.',
-    'FAAH! Test failed. Have you tried turning it off and on again?',
-    'FAAH! Another test bites the dust.',
-    'FAAH! Your test suite needs a hug.',
+    'Brainrot! Your tests called in sick today.',
+    'Brainrot! Looks like someone forgot to test their test.',
+    'Brainrot! That test had one job... ONE JOB.',
+    'Brainrot! Test failed. Have you tried turning it off and on again?',
+    'Brainrot! Another test bites the dust.',
+    'Brainrot! Your test suite needs a hug.',
   ],
   build: [
-    'FAAH! The compiler is disappointed in you.',
-    'FAAH! Build failed. Semicolons are hard.',
-    'FAAH! Your code refused to compile out of protest.',
-    'FAAH! The build broke. Time for coffee.',
-    'FAAH! Compilation error. The computer says no.',
+    'Brainrot! The compiler is disappointed in you.',
+    'Brainrot! Build failed. Semicolons are hard.',
+    'Brainrot! Your code refused to compile out of protest.',
+    'Brainrot! The build broke. Time for coffee.',
+    'Brainrot! Compilation error. The computer says no.',
   ],
   runtime: [
-    'FAAH! Your app just rage-quit.',
-    'FAAH! Runtime error. It worked on my machine...',
-    'FAAH! The program has left the building.',
-    'FAAH! Crash detected. Have you tried blaming DNS?',
-    'FAAH! Your process exited dramatically.',
+    'Brainrot! Your app just rage-quit.',
+    'Brainrot! Runtime error. It worked on my machine...',
+    'Brainrot! The program has left the building.',
+    'Brainrot! Crash detected. Have you tried blaming DNS?',
+    'Brainrot! Your process exited dramatically.',
   ],
   any: [
-    'FAAH! Something went wrong. Classic.',
-    'FAAH! Non-zero exit code. Not ideal.',
-    'FAAH! Failure detected. Sending thoughts and prayers.',
-    'FAAH! That command did not spark joy.',
-    'FAAH! Error. But hey, at least the sound works.',
+    'Brainrot! Something went wrong. Classic.',
+    'Brainrot! Non-zero exit code. Not ideal.',
+    'Brainrot! Failure detected. Sending thoughts and prayers.',
+    'Brainrot! That command did not spark joy.',
+    'Brainrot! Error. But hey, at least the sound works.',
   ],
 };
 
@@ -47,7 +47,7 @@ function log(msg: string): void {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  outputChannel = vscode.window.createOutputChannel('FAAH');
+  outputChannel = vscode.window.createOutputChannel('Brainrot');
   context.subscriptions.push(outputChannel);
 
   extensionPath = context.extensionPath;
@@ -65,42 +65,42 @@ export function activate(context: vscode.ExtensionContext): void {
   detector.activate(context);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('faah.enable', () => {
-      vscode.workspace.getConfiguration('faah').update('enabled', true, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage('FAAH sound enabled!');
+    vscode.commands.registerCommand('brainrot.enable', () => {
+      vscode.workspace.getConfiguration('brainrot').update('enabled', true, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage('Brainrot sound enabled!');
     }),
 
-    vscode.commands.registerCommand('faah.disable', () => {
-      vscode.workspace.getConfiguration('faah').update('enabled', false, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage('FAAH sound disabled.');
+    vscode.commands.registerCommand('brainrot.disable', () => {
+      vscode.workspace.getConfiguration('brainrot').update('enabled', false, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage('Brainrot sound disabled.');
     }),
 
-    vscode.commands.registerCommand('faah.testSound', () => {
+    vscode.commands.registerCommand('brainrot.testSound', () => {
       log('Test sound triggered via command');
       soundPlayer.play();
-      vscode.window.showInformationMessage('FAAH! (test sound)');
+      vscode.window.showInformationMessage('Brainrot! (test sound)');
     }),
 
-    vscode.commands.registerCommand('faah.testImage', async () => {
+    vscode.commands.registerCommand('brainrot.testImage', async () => {
       log('Test image triggered via command');
-      const config = vscode.workspace.getConfiguration('faah');
+      const config = vscode.workspace.getConfiguration('brainrot');
       try {
         await showRandomFailureImage(config);
       } catch (err) {
         log(`Test image failed: ${err}`);
-        vscode.window.showErrorMessage(`FAAH image test failed: ${err}`);
+        vscode.window.showErrorMessage(`Brainrot image test failed: ${err}`);
       }
     }),
   );
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusBarItem.command = 'faah.testSound';
+  statusBarItem.command = 'brainrot.testSound';
   context.subscriptions.push(statusBarItem);
   updateStatusBar();
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('faah')) {
+      if (e.affectsConfiguration('brainrot')) {
         updateStatusBar();
       }
     }),
@@ -110,7 +110,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
-  const config = vscode.workspace.getConfiguration('faah');
+  const config = vscode.workspace.getConfiguration('brainrot');
 
   if (!config.get<boolean>('enabled', true)) {
     log(`Failure (${kind}) ignored — extension disabled`);
@@ -170,6 +170,7 @@ async function showRandomFailureImage(config: vscode.WorkspaceConfiguration): Pr
 
     try {
       await vscode.commands.executeCommand('vscode.open', imageUri, vscode.ViewColumn.Beside);
+      scheduleAutoClose(imageUri, config);
       return;
     } catch (openErr) {
       log(`vscode.open failed: ${openErr}`);
@@ -177,6 +178,34 @@ async function showRandomFailureImage(config: vscode.WorkspaceConfiguration): Pr
   }
 
   log('No failure images found in any candidate directory');
+}
+
+let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleAutoClose(imageUri: vscode.Uri, config: vscode.WorkspaceConfiguration): void {
+  if (autoCloseTimer) {
+    clearTimeout(autoCloseTimer);
+  }
+
+  const seconds = config.get<number>('failureImageDuration', 5);
+  log(`Auto-closing image in ${seconds}s`);
+
+  autoCloseTimer = setTimeout(() => {
+    autoCloseTimer = undefined;
+
+    const tab = vscode.window.tabGroups.all
+      .flatMap(g => g.tabs)
+      .find(t =>
+        t.input instanceof vscode.TabInputCustom && t.input.uri.toString() === imageUri.toString()
+      );
+
+    if (tab) {
+      vscode.window.tabGroups.close(tab).then(
+        () => log('Auto-closed failure image'),
+        (err) => log(`Failed to auto-close: ${err}`)
+      );
+    }
+  }, seconds * 1000);
 }
 
 function getImageDirCandidates(config: vscode.WorkspaceConfiguration): vscode.Uri[] {
@@ -198,7 +227,6 @@ function getImageDirCandidates(config: vscode.WorkspaceConfiguration): vscode.Ur
     }
   }
 
-  // Bundled fallback (only works locally)
   uris.push(vscode.Uri.file(path.join(extensionPath, 'failure-images')));
 
   return uris;
@@ -218,9 +246,9 @@ function isFailureKindAllowed(kind: FailureKind, config: vscode.WorkspaceConfigu
 }
 
 function updateStatusBar(): void {
-  const enabled = vscode.workspace.getConfiguration('faah').get<boolean>('enabled', true);
-  statusBarItem.text = enabled ? '$(megaphone) FAAH' : '$(mute) FAAH';
-  statusBarItem.tooltip = enabled ? 'FAAH is active — click to test sound' : 'FAAH is muted — click to test sound';
+  const enabled = vscode.workspace.getConfiguration('brainrot').get<boolean>('enabled', true);
+  statusBarItem.text = enabled ? '$(megaphone) Brainrot' : '$(mute) Brainrot';
+  statusBarItem.tooltip = enabled ? 'Brainrot is active — click to test sound' : 'Brainrot is muted — click to test sound';
   statusBarItem.show();
 }
 
