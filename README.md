@@ -21,6 +21,8 @@ Download the latest `.vsix` from the [releases](https://github.com/titus7490/bra
 2. `Ctrl+Shift+P` → **"Extensions: Install from VSIX..."**
 3. Select the downloaded `.vsix` file
 
+Or Clone the repository and run `npx @vscode/vsce package` to build the `.vsix` file.
+
 ## Commands
 
 | Command | Description |

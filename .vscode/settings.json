@@ -1,0 +1,6 @@
+{
+    "brainrot.showFailureImage": true,
+    "brainrot.sound": "random",
+    "brainrot.onBuildFailure": true,
+    "brainrot.onRuntimeFailure": true
+}

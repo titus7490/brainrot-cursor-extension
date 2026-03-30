@@ -1,15 +1,21 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { execFile } from 'child_process';
+import { spawn, execFile } from 'child_process';
 import * as vscode from 'vscode';
 
-const BUILT_IN_SOUNDS = ['faaaah', 'fatality', 'joker'] as const;
+const BUILT_IN_SOUNDS = [
+  'faaaah', 'fatality', 'joker',
+  'aaaaaaaa', 'ack', 'bone-crack', 'bruh', 'error',
+  'fortnite', 'fortnite-bass-boosted', 'get-out',
+  'gunshot', 'metal-pipe-clang', 'rehehehe', 'vine',
+] as const;
 type BuiltInSound = (typeof BUILT_IN_SOUNDS)[number];
 type SoundChoice = BuiltInSound | 'random';
 
 export class SoundPlayer {
   private readonly soundsDir: string;
   private readonly log: (msg: string) => void;
+  private detectedPlayer: { cmd: string; buildArgs: (file: string, vol: number) => string[] } | null = null;
 
   constructor(extensionPath: string, log: (msg: string) => void) {
     this.soundsDir = path.join(extensionPath, 'sounds');
@@ -17,7 +23,7 @@ export class SoundPlayer {
     this.log(`Sounds directory: ${this.soundsDir}`);
   }
 
-  async play(): Promise<void> {
+  play(): void {
     const config = vscode.workspace.getConfiguration('brainrot');
     const volume = config.get<number>('volume', 0.7);
     const customPath = config.get<string>('customSoundPath', '');
@@ -29,13 +35,7 @@ export class SoundPlayer {
     }
 
     this.log(`Playing: ${filePath} (volume: ${volume})`);
-
-    try {
-      await this.playFile(filePath, volume);
-      this.log('Playback finished');
-    } catch (err) {
-      this.log(`Playback FAILED: ${err}`);
-    }
+    this.fireAndForget(filePath, volume);
   }
 
   private resolveSoundFile(choice: SoundChoice, customPath: string): string | null {
@@ -59,82 +59,75 @@ export class SoundPlayer {
     return filePath;
   }
 
-  private playFile(filePath: string, volume: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const platform = process.platform;
+  private fireAndForget(filePath: string, volume: number): void {
+    const platform = process.platform;
 
-      if (platform === 'darwin') {
-        this.playMacOS(filePath, volume, resolve, reject);
-      } else if (platform === 'win32') {
-        this.playWindows(filePath, resolve, reject);
-      } else {
-        this.playLinux(filePath, volume, resolve, reject);
-      }
-    });
+    if (platform === 'darwin') {
+      this.spawnDetached('afplay', [filePath, '-v', String(Math.max(0, Math.min(volume, 1)))]);
+    } else if (platform === 'win32') {
+      this.spawnDetached('powershell', [
+        '-NoProfile', '-NonInteractive', '-Command',
+        `(New-Object Media.SoundPlayer '${filePath.replace(/'/g, "''")}').PlaySync()`,
+      ]);
+    } else {
+      this.playLinuxParallel(filePath, volume);
+    }
   }
 
-  private playMacOS(
-    filePath: string,
-    volume: number,
-    resolve: () => void,
-    reject: (err: Error) => void
-  ): void {
-    const afplayVolume = Math.max(0, Math.min(volume, 1)).toString();
-    execFile('afplay', [filePath, '-v', afplayVolume], (err: Error | null) => {
-      err ? reject(err) : resolve();
-    });
+  private spawnDetached(cmd: string, args: string[]): void {
+    try {
+      const child = spawn(cmd, args, {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+      this.log(`Spawned ${cmd} (pid ${child.pid})`);
+    } catch (err) {
+      this.log(`Failed to spawn ${cmd}: ${err}`);
+    }
   }
 
-  private playWindows(
-    filePath: string,
-    resolve: () => void,
-    reject: (err: Error) => void
-  ): void {
-    const script = `(New-Object Media.SoundPlayer $args[0]).PlaySync()`;
-    execFile(
-      'powershell',
-      ['-NoProfile', '-NonInteractive', '-Command', script, '-SoundFile', filePath],
-      (err: Error | null) => {
-        err ? reject(err) : resolve();
-      }
-    );
-  }
-
-  private playLinux(
-    filePath: string,
-    volume: number,
-    resolve: () => void,
-    reject: (err: Error) => void
-  ): void {
-    const players: Array<{ cmd: string; args: string[] }> = [
-      { cmd: 'aplay', args: [filePath] },
-      { cmd: 'paplay', args: [filePath] },
-      { cmd: 'ffplay', args: ['-nodisp', '-autoexit', '-volume', String(Math.round(volume * 100)), filePath] },
-      { cmd: 'mpg123', args: ['-f', String(Math.round(volume * 32768)), filePath] },
-    ];
-
-    this.tryPlayers(players, 0, resolve, reject);
-  }
-
-  private tryPlayers(
-    players: Array<{ cmd: string; args: string[] }>,
-    index: number,
-    resolve: () => void,
-    reject: (err: Error) => void
-  ): void {
-    if (index >= players.length) {
-      reject(new Error('No audio player found (tried aplay, paplay, ffplay, mpg123)'));
+  private playLinuxParallel(filePath: string, volume: number): void {
+    if (this.detectedPlayer) {
+      this.spawnDetached(this.detectedPlayer.cmd, this.detectedPlayer.buildArgs(filePath, volume));
       return;
     }
 
-    const { cmd, args } = players[index];
-    this.log(`Trying player: ${cmd}`);
-    execFile(cmd, args, (err: Error | null) => {
+    const candidates: Array<{
+      cmd: string;
+      buildArgs: (file: string, vol: number) => string[];
+    }> = [
+      { cmd: 'paplay',  buildArgs: (f) => [f] },
+      { cmd: 'ffplay',  buildArgs: (f, v) => ['-nodisp', '-autoexit', '-volume', String(Math.round(v * 100)), f] },
+      { cmd: 'aplay',   buildArgs: (f) => [f] },
+      { cmd: 'mpg123',  buildArgs: (f, v) => ['-f', String(Math.round(v * 32768)), f] },
+    ];
+
+    this.detectAndPlay(candidates, 0, filePath, volume);
+  }
+
+  private detectAndPlay(
+    candidates: Array<{ cmd: string; buildArgs: (file: string, vol: number) => string[] }>,
+    index: number,
+    filePath: string,
+    volume: number,
+  ): void {
+    if (index >= candidates.length) {
+      this.log('No audio player found (tried paplay, ffplay, aplay, mpg123)');
+      return;
+    }
+
+    const candidate = candidates[index];
+    const args = candidate.buildArgs(filePath, volume);
+    this.log(`Trying player: ${candidate.cmd}`);
+
+    execFile(candidate.cmd, args, (err) => {
       if (err) {
-        this.log(`${cmd} failed, trying next...`);
-        this.tryPlayers(players, index + 1, resolve, reject);
+        this.log(`${candidate.cmd} failed, trying next...`);
+        this.detectAndPlay(candidates, index + 1, filePath, volume);
       } else {
-        resolve();
+        this.log(`Detected working player: ${candidate.cmd}`);
+        this.detectedPlayer = candidate;
       }
     });
   }

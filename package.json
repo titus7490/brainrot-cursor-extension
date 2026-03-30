@@ -3,7 +3,7 @@
   "displayName": "Brainrot - Sound & Image on Failure",
   "description": "Plays a sound and shows a random meme whenever your tests, builds, or programs fail in the terminal.",
   "version": "0.1.1",
-  "publisher": "TitusGaubatz",
+  "publisher": "Titus7490",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -36,6 +36,18 @@
       {
         "command": "brainrot.testImage",
         "title": "Brainrot: Test Failure Image"
+      },
+      {
+        "command": "brainrot.openGames",
+        "title": "Brainrot: Open Games"
+      },
+      {
+        "command": "brainrot.typingGame",
+        "title": "Brainrot: Typing Game"
+      },
+      {
+        "command": "brainrot.cookieClicker",
+        "title": "Brainrot: Cookie Clicker"
       }
     ],
     "configuration": {
@@ -70,16 +82,40 @@
           "type": "string",
           "default": "faaaah",
           "enum": [
+            "random",
             "faaaah",
             "fatality",
             "joker",
-            "random"
+            "aaaaaaaa",
+            "ack",
+            "bone-crack",
+            "bruh",
+            "error",
+            "fortnite",
+            "fortnite-bass-boosted",
+            "get-out",
+            "gunshot",
+            "metal-pipe-clang",
+            "rehehehe",
+            "vine"
           ],
           "enumDescriptions": [
+            "🎲 Random pick each time",
             "Classic sad trombone",
             "Mortal Kombat fatality",
             "Why so serious?",
-            "Random pick each time"
+            "AAAAAAAA scream",
+            "Ack! Surprised reaction",
+            "Bone crack sound effect",
+            "Bruh moment",
+            "Error alert sound",
+            "Fortnite default dance",
+            "Fortnite bass boosted",
+            "Get out! meme",
+            "Gunshot sound effect",
+            "Metal pipe clang",
+            "Rehehehe evil laugh",
+            "Vine boom sound effect"
           ],
           "description": "Which built-in sound to play on failure."
         },

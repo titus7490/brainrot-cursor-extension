@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { SoundPlayer } from './soundPlayer';
 import { FailureDetector, FailureKind } from './failureDetector';
+import { createTypingGamePanel } from './games/typingGame';
+import { createCookieClickerPanel } from './games/cookieClicker';
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']);
 
@@ -38,8 +40,11 @@ const FAILURE_MESSAGES: Record<FailureKind, string[]> = {
 };
 
 let statusBarItem: vscode.StatusBarItem;
+let gamesStatusBarItem: vscode.StatusBarItem;
 let outputChannel: vscode.OutputChannel;
 let extensionPath: string;
+let typingGamePanel: vscode.WebviewPanel | undefined;
+let cookieClickerPanel: vscode.WebviewPanel | undefined;
 
 function log(msg: string): void {
   const ts = new Date().toLocaleTimeString();
@@ -91,12 +96,52 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage(`Brainrot image test failed: ${err}`);
       }
     }),
+
+    vscode.commands.registerCommand('brainrot.openGames', async () => {
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: '$(keyboard) Typing Game', description: 'Learn 10-finger typing with fun!', id: 'typing' },
+          { label: '$(heart) Cookie Clicker', description: 'Click cookies, buy upgrades, waste time!', id: 'cookie' },
+        ],
+        { placeHolder: 'Pick a Brainrot Game 🎮' }
+      );
+      if (pick?.id === 'typing') {
+        vscode.commands.executeCommand('brainrot.typingGame');
+      } else if (pick?.id === 'cookie') {
+        vscode.commands.executeCommand('brainrot.cookieClicker');
+      }
+    }),
+
+    vscode.commands.registerCommand('brainrot.typingGame', () => {
+      if (typingGamePanel) {
+        typingGamePanel.reveal(vscode.ViewColumn.One);
+      } else {
+        typingGamePanel = createTypingGamePanel(context);
+        typingGamePanel.onDidDispose(() => { typingGamePanel = undefined; });
+      }
+    }),
+
+    vscode.commands.registerCommand('brainrot.cookieClicker', () => {
+      if (cookieClickerPanel) {
+        cookieClickerPanel.reveal(vscode.ViewColumn.One);
+      } else {
+        cookieClickerPanel = createCookieClickerPanel(context);
+        cookieClickerPanel.onDidDispose(() => { cookieClickerPanel = undefined; });
+      }
+    }),
   );
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.command = 'brainrot.testSound';
   context.subscriptions.push(statusBarItem);
   updateStatusBar();
+
+  gamesStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  gamesStatusBarItem.text = '$(sparkle) Brainrot';
+  gamesStatusBarItem.tooltip = 'Open Brainrot Games 🎮';
+  gamesStatusBarItem.command = 'brainrot.openGames';
+  gamesStatusBarItem.show();
+  context.subscriptions.push(gamesStatusBarItem);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
@@ -139,7 +184,15 @@ function handleFailure(kind: FailureKind, soundPlayer: SoundPlayer): void {
   }
 }
 
+let imageShowing = false;
+let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
 async function showRandomFailureImage(config: vscode.WorkspaceConfiguration): Promise<void> {
+  if (imageShowing) {
+    log('Image already showing — skipping');
+    return;
+  }
+
   const candidates = getImageDirCandidates(config);
   log(`Image dir candidates: ${candidates.map(u => u.toString()).join(', ')}`);
 
@@ -169,18 +222,18 @@ async function showRandomFailureImage(config: vscode.WorkspaceConfiguration): Pr
     log(`Opening failure image: ${imageUri.toString()}`);
 
     try {
+      imageShowing = true;
       await vscode.commands.executeCommand('vscode.open', imageUri, vscode.ViewColumn.Beside);
       scheduleAutoClose(imageUri, config);
       return;
     } catch (openErr) {
+      imageShowing = false;
       log(`vscode.open failed: ${openErr}`);
     }
   }
 
   log('No failure images found in any candidate directory');
 }
-
-let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
 function scheduleAutoClose(imageUri: vscode.Uri, config: vscode.WorkspaceConfiguration): void {
   if (autoCloseTimer) {
@@ -192,18 +245,25 @@ function scheduleAutoClose(imageUri: vscode.Uri, config: vscode.WorkspaceConfigu
 
   autoCloseTimer = setTimeout(() => {
     autoCloseTimer = undefined;
+    imageShowing = false;
 
+    const uriStr = imageUri.toString();
     const tab = vscode.window.tabGroups.all
       .flatMap(g => g.tabs)
-      .find(t =>
-        t.input instanceof vscode.TabInputCustom && t.input.uri.toString() === imageUri.toString()
-      );
+      .find(t => {
+        const input = t.input;
+        if (input instanceof vscode.TabInputCustom && input.uri.toString() === uriStr) { return true; }
+        if (input instanceof vscode.TabInputText && input.uri.toString() === uriStr) { return true; }
+        return false;
+      });
 
     if (tab) {
       vscode.window.tabGroups.close(tab).then(
         () => log('Auto-closed failure image'),
         (err) => log(`Failed to auto-close: ${err}`)
       );
+    } else {
+      log('Auto-close: tab not found (may have been closed manually)');
     }
   }, seconds * 1000);
 }
@@ -247,7 +307,7 @@ function isFailureKindAllowed(kind: FailureKind, config: vscode.WorkspaceConfigu
 
 function updateStatusBar(): void {
   const enabled = vscode.workspace.getConfiguration('brainrot').get<boolean>('enabled', true);
-  statusBarItem.text = enabled ? '$(megaphone) Brainrot' : '$(mute) Brainrot';
+  statusBarItem.text = enabled ? '$(megaphone) FAAH' : '$(mute) FAAH';
   statusBarItem.tooltip = enabled ? 'Brainrot is active — click to test sound' : 'Brainrot is muted — click to test sound';
   statusBarItem.show();
 }
