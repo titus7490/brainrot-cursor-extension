@@ -2,7 +2,7 @@
   "name": "brainrot-cursor-extension",
   "displayName": "Brainrot - Sound & Image on Failure",
   "description": "Plays a sound and shows a random meme whenever your tests, builds, or programs fail in the terminal.",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "publisher": "Titus7490",
   "license": "MIT",
   "engines": {
